@@ -53,6 +53,39 @@
     "knowsAbout": ["Microsoft 365", "Microsoft Copilot", "Power Automate", "Prosessautomatisering", "Kunstig intelligens"]
   }
   </script>
+  <style>
+    #contact-confirmation {
+      box-sizing: border-box;
+      width: min(28rem, calc(100% - 2rem));
+      max-height: calc(100% - 2rem);
+      overflow: auto;
+      margin: auto;
+      padding: clamp(1.25rem, 5vw, 2rem);
+      border: 1px solid #dce8e3;
+      border-radius: 1.25rem;
+      background: #fff;
+      color: #172521;
+      box-shadow: 0 1.25rem 4rem #10292240;
+    }
+    #contact-confirmation::backdrop { background: #10292299; }
+    #contact-confirmation .confirmation-icon {
+      display: grid;
+      place-items: center;
+      width: 2.75rem;
+      height: 2.75rem;
+      margin-bottom: .875rem;
+      border-radius: 50%;
+      background: #e2f3ec;
+      color: #155846;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    #contact-confirmation h2 { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+    #contact-confirmation p { margin-top: .5rem; line-height: 1.5; }
+    #contact-confirmation .confirmation-actions { display: flex; justify-content: flex-end; margin-top: 1.25rem; }
+    #contact-confirmation button { min-width: 5rem; min-height: 2.75rem; }
+    #contact-confirmation button:focus-visible { outline: 2px solid #155846; outline-offset: 4px; }
+  </style>
 </head>
 <body class="bg-bg text-ink font-body antialiased">
 
@@ -370,6 +403,70 @@
       </div>
     </div>
   </footer>
+
+  <!-- Bekreftelse etter vellykket innsending -->
+  <dialog id="contact-confirmation" aria-labelledby="confirmation-title" aria-describedby="confirmation-text">
+    <span class="confirmation-icon" aria-hidden="true">&#10003;</span>
+    <h2 id="confirmation-title">Takk for forespørselen!</h2>
+    <p id="confirmation-text">Vi har mottatt forespørselen din og svarer deg innen 1–2 virkedager.</p>
+    <form method="dialog" class="confirmation-actions">
+      <button type="submit" class="btn btn-primary" autofocus>OK</button>
+    </form>
+  </dialog>
+
+  <script>
+    (() => {
+      const form = document.getElementById('contact-form');
+      const dialog = document.getElementById('contact-confirmation');
+      const status = form.querySelector('.form-status');
+      const button = form.querySelector('button[type="submit"]');
+      const label = button.querySelector('.btn-label');
+      const originalLabel = label.textContent;
+      let pending = false;
+
+      if (typeof dialog.showModal !== 'function' || typeof window.fetch !== 'function') return;
+
+      // Handle only this form, before the existing script can submit it again.
+      document.addEventListener('submit', async (event) => {
+        if (event.target !== form) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (pending) return;
+        status.textContent = '';
+        if (!form.reportValidity()) return;
+
+        pending = true;
+        button.disabled = true;
+        label.textContent = 'Sender …';
+        let sent = false;
+        try {
+          const response = await fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: { Accept: 'application/json' }
+          });
+          sent = response.ok;
+        } catch {
+          // Keep the form values so the visitor can retry.
+        } finally {
+          pending = false;
+          button.disabled = false;
+          label.textContent = originalLabel;
+        }
+
+        if (!sent) {
+          status.textContent = 'Vi fikk ikke bekreftet innsendingen. Prøv igjen, eller kontakt oss på post@automator.no.';
+          return;
+        }
+        form.reset();
+        dialog.showModal();
+      }, true);
+
+      // Keep the confirmation open until the visitor presses OK.
+      dialog.addEventListener('cancel', (event) => event.preventDefault());
+      dialog.addEventListener('close', () => button.focus());
+    })();
+  </script>
 
   <script src="js/script.js"></script>
 </body>
